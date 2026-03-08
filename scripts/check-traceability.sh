@@ -100,6 +100,48 @@ else
   echo ""
 fi
 
+# --- SCI-HELM-001: API deployment MUST have livenessProbe ---
+API_DEPLOY="${REPO_ROOT}/charts/sdd-navigator/charts/api/templates/deployment.yaml"
+if [[ -f "${API_DEPLOY}" ]] && grep -v '^\s*#' "${API_DEPLOY}" | grep -q 'livenessProbe:'; then
+  echo -e "${GREEN}PASS [SCI-HELM-001]${NC}: API deployment has livenessProbe"
+else
+  echo -e "${RED}FAIL [SCI-HELM-001]${NC}: API deployment is missing livenessProbe on /healthcheck"
+  EXIT_CODE=1
+fi
+echo ""
+
+# --- SCI-HELM-005: values.yaml MUST NOT contain plaintext credentials ---
+VALUES="${REPO_ROOT}/charts/sdd-navigator/values.yaml"
+BAD_PASSWORDS=$(grep -E '^\s+password:' "${VALUES}" | grep -v '^\s*#' | grep -v 'CHANGE_ME' || true)
+if [[ -z "${BAD_PASSWORDS}" ]]; then
+  echo -e "${GREEN}PASS [SCI-HELM-005]${NC}: All password defaults use CHANGE_ME placeholders"
+else
+  echo -e "${RED}FAIL [SCI-HELM-005]${NC}: Plaintext credentials in values.yaml defaults:"
+  echo "${BAD_PASSWORDS}" | sed 's/^/    /'
+  EXIT_CODE=1
+fi
+echo ""
+
+# --- SCI-HELM-006: Template files MUST NOT hardcode port numbers ---
+HARDCODED_FOUND=0
+while IFS= read -r -d '' file; do
+  rel="${file#"${REPO_ROOT}/"}"
+  matches=$(grep -nEi '[^a-z]port: [0-9]+' "${file}" 2>/dev/null | grep -v '{{' || true)
+  if [[ -n "${matches}" ]]; then
+    echo -e "${RED}FAIL [SCI-HELM-006]${NC}: Hardcoded port in ${rel}:"
+    echo "${matches}" | sed 's/^/    /'
+    HARDCODED_FOUND=1
+    EXIT_CODE=1
+  fi
+done < <(find "${REPO_ROOT}/charts/sdd-navigator/charts" "${REPO_ROOT}/charts/sdd-navigator/templates" \
+  -path "*/templates/*.yaml" \
+  -not -path "*/charts/postgresql*" \
+  -print0 2>/dev/null)
+if [[ ${HARDCODED_FOUND} -eq 0 ]]; then
+  echo -e "${GREEN}PASS [SCI-HELM-006]${NC}: No hardcoded port numbers in template files"
+fi
+echo ""
+
 # --- Summary ---
 UNIQUE_REFS=$(printf '%s\n' "${ALL_REFS[@]}" | sort -u | wc -l | tr -d ' ')
 TOTAL_VALID=$(echo "${VALID_IDS}" | wc -l | tr -d ' ')
