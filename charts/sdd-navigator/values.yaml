@@ -1,0 +1,71 @@
+# @req SCI-HELM-005, SCI-HELM-006
+# All configurable values for SDD Navigator stack.
+# Database credentials use placeholder values that fail visibly if not overridden.
+
+global:
+  domain: sdd-navigator.local
+  namespace: sdd-navigator
+  imageRegistry: ""
+
+api:
+  image:
+    repository: ghcr.io/foreachpartners/sdd-coverage-api
+    tag: "3.0.0"
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 4010
+  logLevel: info
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  database:
+    host: sdd-navigator-postgresql
+    port: 5432
+    name: sdd_navigator
+    user: sdd_user
+    password: "CHANGE_ME_DB_PASSWORD"
+
+frontend:
+  image:
+    repository: nginx
+    tag: "1.27-alpine"
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+postgresql:
+  enabled: true
+  auth:
+    database: sdd_navigator
+    username: sdd_user
+    existingSecret: sdd-navigator-db-credentials
+  primary:
+    persistence:
+      enabled: true
+      size: 1Gi
+    podSecurityContext:
+      fsGroup: 1001
+    containerSecurityContext:
+      runAsUser: 1001
+      runAsNonRoot: true
+  image:
+    tag: "16.6.0"
+
+ingress:
+  enabled: true
+  className: nginx
+  host: sdd-navigator.local
+  tls:
+    enabled: false
+    secretName: sdd-navigator-tls
