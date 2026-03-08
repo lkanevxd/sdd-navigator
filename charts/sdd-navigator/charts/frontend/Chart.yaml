@@ -1,0 +1,7 @@
+# @req SCI-HELM-003
+apiVersion: v2
+name: frontend
+description: SDD Navigator frontend (nginx serving Next.js static export) subchart
+type: application
+version: 1.0.0
+appVersion: "3.0.0"
