@@ -1,4 +1,4 @@
-# @req SCI-CI-001, SCI-CI-002
+# @req SCI-CI-001, SCI-CI-002, SCI-CI-999
 name: Infrastructure CI
 
 on:
