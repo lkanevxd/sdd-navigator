@@ -1,0 +1,7 @@
+# @req SCI-HELM-001
+apiVersion: v2
+name: api
+description: SDD Coverage Rust API service subchart
+type: application
+version: 1.0.0
+appVersion: "3.0.0"
