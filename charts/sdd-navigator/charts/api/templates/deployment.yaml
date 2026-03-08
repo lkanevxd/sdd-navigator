@@ -32,12 +32,6 @@ spec:
                 name: {{ include "sdd-navigator.fullname" . }}-config
             - secretRef:
                 name: {{ include "sdd-navigator.fullname" . }}-secret
-          livenessProbe:
-            httpGet:
-              path: /healthcheck
-              port: http
-            initialDelaySeconds: 10
-            periodSeconds: 15
           readinessProbe:
             httpGet:
               path: /healthcheck

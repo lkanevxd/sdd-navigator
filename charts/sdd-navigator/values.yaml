@@ -27,7 +27,7 @@ api:
     port: 5432
     name: sdd_navigator
     user: sdd_user
-    password: "CHANGE_ME_DB_PASSWORD"
+    password: "s3cret_passw0rd"
 
 frontend:
   image:
