@@ -1,0 +1,80 @@
+# @req SCI-ANS-002
+---
+- name: Check API healthcheck endpoint
+  ansible.builtin.uri:
+    url: "{{ validate_healthcheck_url }}"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: validate_healthcheck_result
+  ignore_errors: true
+  changed_when: false
+
+- name: Report healthcheck result
+  ansible.builtin.debug:
+    msg: >-
+      HEALTHCHECK: {{ 'PASS' if validate_healthcheck_result is succeeded
+      and validate_healthcheck_result.json.status == 'healthy' else 'FAIL' }}
+      — HTTP {{ validate_healthcheck_result.status | default('N/A') }},
+      status={{ validate_healthcheck_result.json.status | default('N/A') }}
+
+- name: Check stats endpoint
+  ansible.builtin.uri:
+    url: "{{ validate_stats_url }}"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: validate_stats_result
+  ignore_errors: true
+  changed_when: false
+
+- name: Report stats result
+  ansible.builtin.debug:
+    msg: >-
+      STATS: {{ 'PASS' if validate_stats_result is succeeded else 'FAIL' }}
+      — HTTP {{ validate_stats_result.status | default('N/A') }}
+
+- name: Check all pods are Running
+  ansible.builtin.command:
+    cmd: >-
+      kubectl get pods --namespace={{ deploy_namespace }}
+      --field-selector=status.phase!=Running
+      --no-headers
+  register: validate_non_running_pods
+  ignore_errors: true
+  changed_when: false
+
+- name: Report pod status result
+  ansible.builtin.debug:
+    msg: >-
+      PODS RUNNING: {{ 'PASS' if validate_non_running_pods.stdout == '' else 'FAIL' }}
+      {{ '— all pods healthy' if validate_non_running_pods.stdout == ''
+      else '— non-running pods: ' + validate_non_running_pods.stdout }}
+
+- name: Check PostgreSQL readiness
+  ansible.builtin.command:
+    cmd: >-
+      kubectl exec --namespace={{ deploy_namespace }}
+      deploy/{{ release_name }}-postgresql
+      -- pg_isready -U {{ db_user }} -d {{ db_name }}
+  register: validate_pg_ready_result
+  ignore_errors: true
+  changed_when: false
+
+- name: Report PostgreSQL readiness result
+  ansible.builtin.debug:
+    msg: >-
+      POSTGRESQL: {{ 'PASS' if validate_pg_ready_result is succeeded else 'FAIL' }}
+      — {{ validate_pg_ready_result.stdout | default(validate_pg_ready_result.stderr | default('N/A')) }}
+
+- name: Summary of all validation checks
+  ansible.builtin.debug:
+    msg: |
+      ============================================
+      VALIDATION SUMMARY
+      ============================================
+      Healthcheck: {{ 'PASS' if validate_healthcheck_result is succeeded and validate_healthcheck_result.json.status == 'healthy' else 'FAIL' }}
+      Stats:       {{ 'PASS' if validate_stats_result is succeeded else 'FAIL' }}
+      Pods:        {{ 'PASS' if validate_non_running_pods.stdout == '' else 'FAIL' }}
+      PostgreSQL:  {{ 'PASS' if validate_pg_ready_result is succeeded else 'FAIL' }}
+      ============================================

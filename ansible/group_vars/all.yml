@@ -1,0 +1,32 @@
+# @req SCI-ANS-001, SCI-ANS-003
+---
+# Namespace and release
+deploy_namespace: sdd-navigator
+release_name: sdd-navigator
+chart_path: "{{ playbook_dir }}/../charts/sdd-navigator"
+
+# API configuration
+api_image: ghcr.io/foreachpartners/sdd-coverage-api
+api_tag: "3.0.0"
+api_replicas: 2
+api_port: 4010
+
+# Frontend configuration
+frontend_image: nginx
+frontend_tag: "1.27-alpine"
+frontend_replicas: 2
+
+# Database configuration (no passwords — use --extra-vars or vault)
+db_name: sdd_navigator
+db_user: sdd_user
+
+# Ingress
+domain: sdd-navigator.local
+tls_enabled: false
+
+# Helm timeout
+helm_timeout: 5m
+
+# Validation
+validate_healthcheck_url: "http://localhost:{{ api_port }}/healthcheck"
+validate_stats_url: "http://localhost:{{ api_port }}/stats"

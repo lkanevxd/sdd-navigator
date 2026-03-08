@@ -1,0 +1,62 @@
+# @req SCI-ANS-001, SCI-ANS-003
+---
+- name: Ensure namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ deploy_namespace }}"
+    state: present
+  changed_when: false
+
+- name: Create database credentials secret
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ release_name }}-db-credentials"
+        namespace: "{{ deploy_namespace }}"
+      type: Opaque
+      stringData:
+        password: "{{ db_password | default('CHANGE_ME_DB_PASSWORD') }}"
+        postgres-password: "{{ postgres_password | default('CHANGE_ME_POSTGRES_PASSWORD') }}"
+  no_log: true
+
+- name: Deploy SDD Navigator Helm chart
+  kubernetes.core.helm:
+    name: "{{ release_name }}"
+    chart_ref: "{{ chart_path }}"
+    release_namespace: "{{ deploy_namespace }}"
+    create_namespace: true
+    wait: true
+    timeout: "{{ helm_timeout }}"
+    values:
+      api:
+        image:
+          repository: "{{ api_image }}"
+          tag: "{{ api_tag }}"
+        replicas: "{{ api_replicas }}"
+        port: "{{ api_port }}"
+        database:
+          password: "{{ db_password | default('CHANGE_ME_DB_PASSWORD') }}"
+      frontend:
+        image:
+          repository: "{{ frontend_image }}"
+          tag: "{{ frontend_tag }}"
+        replicas: "{{ frontend_replicas }}"
+      ingress:
+        host: "{{ domain }}"
+        tls:
+          enabled: "{{ tls_enabled }}"
+  register: deploy_helm_result
+  changed_when: deploy_helm_result.status is defined and deploy_helm_result.status.get('first_deployed', '') != ''
+
+- name: Wait for all pods to be ready
+  ansible.builtin.command:
+    cmd: >-
+      kubectl wait --for=condition=ready pods --all
+      --namespace={{ deploy_namespace }}
+      --timeout=300s
+  register: deploy_wait_result
+  changed_when: false
